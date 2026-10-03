@@ -25,6 +25,7 @@ import {
   TerminalSquare,
   Volume2,
   VolumeOff,
+  Network,
 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -78,6 +79,7 @@ import { previewBridge } from "./preview/previewBridge";
 import { PierreEntryIcon } from "./chat/PierreEntryIcon";
 import { resolvePullRequestState } from "./pullRequest/pullRequestPresentation";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { GraphOrchestratorPanel } from "./graph/GraphOrchestratorPanel";
 
 interface RightPanelTabsProps {
   mode: PreviewPanelMode;
@@ -130,6 +132,8 @@ interface RightPanelTabsProps {
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
   deviceAvailable: boolean;
+  onAddGraph?: () => void;
+  graphAvailable?: boolean;
   pullRequestStatusSeeds?: Readonly<Record<string, PullRequestTabStatusSeed>>;
   children: ReactNode;
 }
@@ -158,6 +162,7 @@ const SURFACE_DISABLED_REASONS = {
   pullRequest: "This thread's branch has no pull request yet.",
   pullRequests: "No linked pull requests are available for this thread.",
   device: "Devices are only available from a thread.",
+  graph: "Agent Graph surface.",
 } as const;
 
 /** Overlays that must win over the launcher's letter shortcuts. */
@@ -181,6 +186,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   pullRequest: "No pull request on this branch yet.",
   pullRequests: "No linked pull requests available.",
   device: "Available from a thread.",
+  graph: "Available in any workspace.",
 } as const;
 
 type TabContextMenuAction =
@@ -598,6 +604,8 @@ function surfaceTitle(
       return "Pull requests";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
+    case "graph":
+      return "Agent Graph";
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       if (!snapshot || snapshot.navStatus._tag === "Idle") return "Browser";
@@ -687,6 +695,8 @@ function SurfaceIcon({
       ) : (
         <Smartphone className="size-3 shrink-0" />
       );
+    case "graph":
+      return <Network className="size-3 shrink-0 text-cyan-400" />;
   }
 }
 
@@ -888,6 +898,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.deviceAvailable,
       disabledReason: SURFACE_DISABLED_REASONS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Agent Graph",
+      icon: Network,
+      shortcut: "G",
+      available: props.graphAvailable ?? true,
+      disabledReason: SURFACE_DISABLED_REASONS.graph,
+      onClick: () => (props.onAddGraph ? props.onAddGraph() : undefined),
     },
   ] as const;
 
@@ -1380,6 +1398,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             pullRequestsAvailable={props.pullRequestsAvailable}
             deviceAvailable={props.deviceAvailable}
           />
+        ) : props.surfaces.find((s) => s.id === props.activeSurfaceId)?.kind === "graph" ? (
+          <GraphOrchestratorPanel />
         ) : (
           props.children
         )}
