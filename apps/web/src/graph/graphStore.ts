@@ -123,6 +123,8 @@ export interface GraphStoreState {
   addNode: (type: GraphNodeType) => void;
   updateNodeData: (nodeId: string, data: Partial<GraphNodeData>) => void;
   deleteNode: (nodeId: string) => void;
+  deleteEdge: (edgeId: string) => void;
+  duplicateNode: (nodeId: string) => void;
   selectNode: (nodeId: string | null) => void;
 
   startExecution: () => void;
@@ -202,6 +204,31 @@ export const useGraphStore = create<GraphStoreState>((set, get) => ({
       nodes: get().nodes.filter((n) => n.id !== nodeId),
       edges: get().edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
       selectedNodeId: get().selectedNodeId === nodeId ? null : get().selectedNodeId,
+    });
+  },
+
+  deleteEdge: (edgeId) => {
+    set({
+      edges: get().edges.filter((e) => e.id !== edgeId),
+    });
+  },
+
+  duplicateNode: (nodeId) => {
+    const node = get().nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    const newId = `node-${Date.now()}`;
+    const duplicatedNode: CustomGraphNode = {
+      ...node,
+      id: newId,
+      position: { x: node.position.x + 40, y: node.position.y + 40 },
+      data: {
+        ...node.data,
+        label: `${node.data.label} (Copy)`,
+      },
+    };
+    set({
+      nodes: [...get().nodes, duplicatedNode],
+      selectedNodeId: newId,
     });
   },
 

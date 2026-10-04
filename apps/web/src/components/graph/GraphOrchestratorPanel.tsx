@@ -4,6 +4,7 @@ import "@xyflow/react/dist/style.css";
 import {
   Bot,
   ChevronDown,
+  Copy,
   Download,
   FileText,
   GitFork,
@@ -11,8 +12,10 @@ import {
   Play,
   Plus,
   RotateCw,
+  Settings,
   StepForward,
   Terminal,
+  Trash2,
   Upload,
   UserCheck,
 } from "lucide-react";
@@ -45,6 +48,9 @@ export function GraphOrchestratorPanel() {
     onEdgesChange,
     onConnect,
     addNode,
+    deleteNode,
+    deleteEdge,
+    duplicateNode,
     selectNode,
     isExecuting,
     startExecution,
@@ -59,6 +65,14 @@ export function GraphOrchestratorPanel() {
   const addMenuRef = useRef<HTMLDivElement>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
 
+  const [contextMenu, setContextMenu] = useState<{
+    type: "node" | "edge";
+    id: string;
+    x: number;
+    y: number;
+    label?: string;
+  } | null>(null);
+
   useEffect(() => {
     if (!addMenuOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -69,6 +83,48 @@ export function GraphOrchestratorPanel() {
     window.addEventListener("mousedown", handleClickOutside);
     return () => window.removeEventListener("mousedown", handleClickOutside);
   }, [addMenuOpen]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setContextMenu(null);
+    };
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [contextMenu]);
+
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: any) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu({
+      type: "node",
+      id: node.id,
+      x: event.clientX,
+      y: event.clientY,
+      label: node.data?.label || node.id,
+    });
+  }, []);
+
+  const handleEdgeContextMenu = useCallback((event: React.MouseEvent, edge: any) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu({
+      type: "edge",
+      id: edge.id,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }, []);
+
+  const handlePaneClick = useCallback(() => {
+    selectNode(null);
+    setContextMenu(null);
+  }, [selectNode]);
 
   const handleExport = useCallback(() => {
     const jsonStr = exportWorkflowJSON();
@@ -297,8 +353,13 @@ export function GraphOrchestratorPanel() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
-          onNodeClick={(_, node) => selectNode(node.id)}
-          onPaneClick={() => selectNode(null)}
+          onNodeClick={(_, node) => {
+            selectNode(node.id);
+            setContextMenu(null);
+          }}
+          onNodeContextMenu={handleNodeContextMenu}
+          onEdgeContextMenu={handleEdgeContextMenu}
+          onPaneClick={handlePaneClick}
           fitView
           colorMode="dark"
         >
@@ -324,6 +385,76 @@ export function GraphOrchestratorPanel() {
             }}
           />
         </ReactFlow>
+
+        {/* Right Click Context Menu */}
+        {contextMenu && (
+          <div
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="fixed z-50 min-w-44 bg-card border border-border shadow-2xl rounded-md p-1 flex flex-col text-xs animate-in fade-in-50 zoom-in-95"
+          >
+            {contextMenu.type === "node" && (
+              <>
+                <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase border-b border-border/60 mb-1 truncate max-w-48">
+                  Node: {contextMenu.label}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectNode(contextMenu.id);
+                    setContextMenu(null);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-foreground text-left transition-colors"
+                >
+                  <Settings className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <span>Inspect / Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    duplicateNode(contextMenu.id);
+                    setContextMenu(null);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-foreground text-left transition-colors"
+                >
+                  <Copy className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Duplicate Node</span>
+                </button>
+                <div className="h-px bg-border/60 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteNode(contextMenu.id);
+                    setContextMenu(null);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-destructive/20 text-destructive rounded text-[11px] text-left transition-colors font-medium"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Delete Node</span>
+                </button>
+              </>
+            )}
+
+            {contextMenu.type === "edge" && (
+              <>
+                <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase border-b border-border/60 mb-1">
+                  Connection Edge
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteEdge(contextMenu.id);
+                    setContextMenu(null);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-destructive/20 text-destructive rounded text-[11px] text-left transition-colors font-medium"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Delete Connection</span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Node Inspector Drawer */}
         <NodeInspectorDrawer />
