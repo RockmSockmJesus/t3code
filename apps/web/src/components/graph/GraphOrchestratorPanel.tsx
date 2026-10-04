@@ -1,14 +1,9 @@
-import { useCallback, useRef } from "react";
-import {
-  Background,
-  Controls,
-  MiniMap,
-  ReactFlow,
-  type NodeTypes,
-} from "@xyflow/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Background, Controls, MiniMap, ReactFlow, type NodeTypes } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
   Bot,
+  ChevronDown,
   Download,
   FileText,
   GitFork,
@@ -61,6 +56,19 @@ export function GraphOrchestratorPanel() {
   } = useGraphStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addMenuRef = useRef<HTMLDivElement>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [addMenuOpen]);
 
   const handleExport = useCallback(() => {
     const jsonStr = exportWorkflowJSON();
@@ -104,55 +112,116 @@ export function GraphOrchestratorPanel() {
 
         {/* Add Node Menu */}
         <div className="flex items-center gap-1">
-          <div className="relative group">
-            <button className="flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90 px-2 py-1 rounded font-medium text-[11px] transition-colors">
-              <Plus className="w-3 h-3" />
+          <div className="relative" ref={addMenuRef}>
+            <button
+              type="button"
+              onClick={() => setAddMenuOpen((prev) => !prev)}
+              className="flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90 px-2.5 py-1 rounded font-medium text-[11px] transition-colors shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
               <span>Add Node</span>
+              <ChevronDown className="w-3 h-3 opacity-70" />
             </button>
-            <div className="absolute left-0 top-full mt-1 hidden group-hover:flex flex-col bg-card border border-border shadow-lg rounded p-1 min-w-36 z-30">
-              <button
-                onClick={() => addNode("input")}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground"
-              >
-                <FileText className="w-3 h-3 text-muted-foreground" />
-                <span>Input Spec</span>
-              </button>
-              <button
-                onClick={() => addNode("agent")}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground"
-              >
-                <Bot className="w-3 h-3 text-blue-400" />
-                <span>Agent Node</span>
-              </button>
-              <button
-                onClick={() => addNode("action")}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground"
-              >
-                <Terminal className="w-3 h-3 text-emerald-400" />
-                <span>Action / Command</span>
-              </button>
-              <button
-                onClick={() => addNode("router")}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground"
-              >
-                <GitFork className="w-3 h-3 text-amber-400" />
-                <span>If/Else Router</span>
-              </button>
-              <button
-                onClick={() => addNode("loop")}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground"
-              >
-                <RotateCw className="w-3 h-3 text-purple-400" />
-                <span>Loop Gate</span>
-              </button>
-              <button
-                onClick={() => addNode("human")}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground"
-              >
-                <UserCheck className="w-3 h-3 text-cyan-400" />
-                <span>Human Review</span>
-              </button>
-            </div>
+            {addMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 flex flex-col bg-card border border-border shadow-xl rounded-md p-1 min-w-48 z-50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    addNode("input");
+                    setAddMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium">Input Spec</span>
+                    <span className="text-[9px] text-muted-foreground truncate">
+                      Prompt / Brief Input
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addNode("agent");
+                    setAddMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground transition-colors"
+                >
+                  <Bot className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium">Agent Node</span>
+                    <span className="text-[9px] text-muted-foreground truncate">
+                      AI Reasoning Agent
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addNode("action");
+                    setAddMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground transition-colors"
+                >
+                  <Terminal className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium">Action / Command</span>
+                    <span className="text-[9px] text-muted-foreground truncate">
+                      Shell / Build Command
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addNode("router");
+                    setAddMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground transition-colors"
+                >
+                  <GitFork className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium">If/Else Router</span>
+                    <span className="text-[9px] text-muted-foreground truncate">
+                      Pass / Fail Branching
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addNode("loop");
+                    setAddMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground transition-colors"
+                >
+                  <RotateCw className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium">Loop Gate</span>
+                    <span className="text-[9px] text-muted-foreground truncate">
+                      Retry Limit Loop
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addNode("human");
+                    setAddMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-accent rounded text-[11px] text-left text-foreground transition-colors"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium">Human Review</span>
+                    <span className="text-[9px] text-muted-foreground truncate">
+                      Human Gate Approval
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="h-4 w-px bg-border mx-1" />
