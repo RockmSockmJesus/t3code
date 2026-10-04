@@ -333,6 +333,8 @@ function RightPanelEmptyState(props: {
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
   deviceAvailable: boolean;
+  onAddGraph?: () => void;
+  graphAvailable?: boolean;
 }) {
   // -1 means no highlight: it only appears on hover or arrow use.
   const [highlight, setHighlight] = useState(-1);
@@ -394,6 +396,15 @@ function RightPanelEmptyState(props: {
       available: props.deviceAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Agent Graph",
+      description: "Visual agent orchestration flow.",
+      icon: Network,
+      shortcut: "G",
+      available: props.graphAvailable ?? true,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.graph,
+      onClick: () => (props.onAddGraph ? props.onAddGraph() : undefined),
     },
   ] as const;
 
@@ -1397,6 +1408,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             pullRequestAvailable={props.pullRequestAvailable}
             pullRequestsAvailable={props.pullRequestsAvailable}
             deviceAvailable={props.deviceAvailable}
+            onAddGraph={props.onAddGraph}
+            graphAvailable={props.graphAvailable}
           />
         ) : props.surfaces.find((s) => s.id === props.activeSurfaceId)?.kind === "graph" ? (
           <GraphOrchestratorPanel />
