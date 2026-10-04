@@ -116,9 +116,18 @@ function runChecked(command, args) {
   );
 }
 
+function tryRun(command, args) {
+  const result = NodeChildProcess.spawnSync(command, args, {
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  return result.status === 0;
+}
+
 function installElectronRuntime(electronDir, version) {
   const tempDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-electron-"));
   const zipPath = NodePath.join(tempDir, `electron-v${version}-${hostPlatform}-${hostArch}.zip`);
+  const distDir = NodePath.join(electronDir, "dist");
 
   try {
     runChecked("curl", [
@@ -127,15 +136,59 @@ function installElectronRuntime(electronDir, version) {
       "-o",
       zipPath,
     ]);
+
+    NodeFS.mkdirSync(distDir, { recursive: true });
+
     if (hostPlatform === "darwin") {
-      runChecked("ditto", ["-x", "-k", zipPath, NodePath.join(electronDir, "dist")]);
+      runChecked("ditto", ["-x", "-k", zipPath, distDir]);
+    } else if (hostPlatform === "win32") {
+      const success =
+        tryRun("powershell", [
+          "-NoProfile",
+          "-Command",
+          `Expand-Archive -Force -LiteralPath '${zipPath}' -DestinationPath '${distDir}'`,
+        ]) ||
+        tryRun("tar", ["-xf", zipPath, "-C", distDir]) ||
+        tryRun("python", [
+          "-c",
+          "import os, sys, zipfile; os.makedirs(sys.argv[2], exist_ok=True); zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])",
+          zipPath,
+          distDir,
+        ]) ||
+        tryRun("python3", [
+          "-c",
+          "import os, sys, zipfile; os.makedirs(sys.argv[2], exist_ok=True); zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])",
+          zipPath,
+          distDir,
+        ]);
+
+      if (!success) {
+        throw new Error(
+          "Failed to extract Electron zip on Windows using powershell, tar, python, or python3",
+        );
+      }
     } else {
-      runChecked("python3", [
-        "-c",
-        "import os, sys, zipfile; os.makedirs(sys.argv[2], exist_ok=True); zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])",
-        zipPath,
-        NodePath.join(electronDir, "dist"),
-      ]);
+      const success =
+        tryRun("unzip", ["-q", zipPath, "-d", distDir]) ||
+        tryRun("python3", [
+          "-c",
+          "import os, sys, zipfile; os.makedirs(sys.argv[2], exist_ok=True); zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])",
+          zipPath,
+          distDir,
+        ]) ||
+        tryRun("python", [
+          "-c",
+          "import os, sys, zipfile; os.makedirs(sys.argv[2], exist_ok=True); zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])",
+          zipPath,
+          distDir,
+        ]) ||
+        tryRun("tar", ["-xf", zipPath, "-C", distDir]);
+
+      if (!success) {
+        throw new Error(
+          "Failed to extract Electron zip on Linux using unzip, python3, python, or tar",
+        );
+      }
     }
   } finally {
     NodeFS.rmSync(tempDir, { recursive: true, force: true });
