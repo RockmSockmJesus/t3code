@@ -9988,6 +9988,12 @@ export default function ChatView(props: ChatViewProps) {
       const targetEnvironmentId = activeThreadRef.environmentId;
       const nextThreadId = newThreadId();
       const title = `🤖 [Graph] ${truncate(nodeLabel, { length: 40 })}`;
+      const sendCtx = composerRef.current?.getSendContext();
+      const targetModelSelection: ModelSelection =
+        sendCtx?.selectedModelSelection ??
+        activeThread?.modelSelection ??
+        activeProjectDefaultModelSelection ??
+        NO_PROVIDER_MODEL_SELECTION;
 
       const createResult = await createThread({
         environmentId: targetEnvironmentId,
@@ -9995,7 +10001,7 @@ export default function ChatView(props: ChatViewProps) {
           threadId: nextThreadId,
           projectId: activeProject.id,
           title,
-          modelSelection: ctxSelectedModelSelection,
+          modelSelection: targetModelSelection,
           runtimeMode: defaultRuntimeMode,
           interactionMode: "default",
           branch: activeThreadBranch,
@@ -10023,10 +10029,11 @@ export default function ChatView(props: ChatViewProps) {
       activeProject,
       createThread,
       startThreadTurn,
-      ctxSelectedModelSelection,
       defaultRuntimeMode,
       activeThreadBranch,
       activeThread,
+      activeProjectDefaultModelSelection,
+      composerRef,
     ],
   );
 
