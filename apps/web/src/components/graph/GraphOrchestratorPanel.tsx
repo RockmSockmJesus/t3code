@@ -38,7 +38,9 @@ const nodeTypes: NodeTypes = {
   human: HumanGateNode,
 };
 
-export function GraphOrchestratorPanel() {
+export function GraphOrchestratorPanel(props: {
+  onSpawnAgentThread?: (label: string, prompt: string) => Promise<void> | void;
+}) {
   const {
     workflowName,
     setWorkflowName,
@@ -59,7 +61,14 @@ export function GraphOrchestratorPanel() {
     stepExecution,
     exportWorkflowJSON,
     loadWorkflowJSON,
+    setAgentThreadSpawner,
   } = useGraphStore();
+
+  useEffect(() => {
+    if (props.onSpawnAgentThread) {
+      setAgentThreadSpawner(props.onSpawnAgentThread);
+    }
+  }, [props.onSpawnAgentThread, setAgentThreadSpawner]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);

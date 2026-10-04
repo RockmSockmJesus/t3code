@@ -133,6 +133,7 @@ interface RightPanelTabsProps {
   pullRequestsAvailable: boolean;
   deviceAvailable: boolean;
   onAddGraph?: () => void;
+  onSpawnAgentThread?: (label: string, prompt: string) => Promise<void> | void;
   graphAvailable?: boolean;
   pullRequestStatusSeeds?: Readonly<Record<string, PullRequestTabStatusSeed>>;
   children: ReactNode;
@@ -1412,7 +1413,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             graphAvailable={props.graphAvailable}
           />
         ) : props.surfaces.find((s) => s.id === props.activeSurfaceId)?.kind === "graph" ? (
-          <GraphOrchestratorPanel />
+          <GraphOrchestratorPanel onSpawnAgentThread={props.onSpawnAgentThread} />
         ) : (
           props.children
         )}

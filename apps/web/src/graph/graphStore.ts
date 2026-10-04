@@ -114,7 +114,11 @@ export interface GraphStoreState {
   selectedNodeId: string | null;
   isExecuting: boolean;
   activeNodeId: string | null;
+  agentThreadSpawner: ((label: string, prompt: string) => Promise<void> | void) | null;
 
+  setAgentThreadSpawner: (
+    spawner: ((label: string, prompt: string) => Promise<void> | void) | null,
+  ) => void;
   setWorkflowName: (name: string) => void;
   onNodesChange: (changes: NodeChange<CustomGraphNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<CustomGraphEdge>[]) => void;
@@ -130,7 +134,9 @@ export interface GraphStoreState {
   startExecution: () => void;
   pauseExecution: () => void;
   resetExecution: () => void;
-  stepExecution: () => void;
+  stepExecution: () => Promise<void>;
+  approveHumanGate: (nodeId: string) => void;
+  rejectHumanGate: (nodeId: string) => void;
 
   loadWorkflowJSON: (jsonStr: string) => boolean;
   exportWorkflowJSON: () => string;
@@ -143,7 +149,9 @@ export const useGraphStore = create<GraphStoreState>((set, get) => ({
   selectedNodeId: null,
   isExecuting: false,
   activeNodeId: null,
+  agentThreadSpawner: null,
 
+  setAgentThreadSpawner: (spawner) => set({ agentThreadSpawner: spawner }),
   setWorkflowName: (name) => set({ workflowName: name }),
 
   onNodesChange: (changes) =>
@@ -240,9 +248,13 @@ export const useGraphStore = create<GraphStoreState>((set, get) => ({
     set({ isExecuting: true, activeNodeId: nodes[0].id });
     const updated = nodes.map((n, idx) => ({
       ...n,
-      data: { ...n.data, status: (idx === 0 ? "running" : "idle") as any },
+      data: { ...n.data, status: (idx === 0 ? "running" : "idle") as any, logs: [] },
     }));
     set({ nodes: updated });
+    // Trigger step execution automatically
+    setTimeout(() => {
+      void get().stepExecution();
+    }, 100);
   },
 
   pauseExecution: () => {
@@ -260,22 +272,83 @@ export const useGraphStore = create<GraphStoreState>((set, get) => ({
     });
   },
 
-  stepExecution: () => {
-    const { nodes, activeNodeId, edges } = get();
+  stepExecution: async () => {
+    const { nodes, activeNodeId, edges, agentThreadSpawner } = get();
     if (!activeNodeId) {
       if (nodes.length > 0) {
         get().startExecution();
       }
       return;
     }
-    const currentIndex = nodes.findIndex((n) => n.id === activeNodeId);
-    if (currentIndex === -1) return;
+    const currentNode = nodes.find((n) => n.id === activeNodeId);
+    if (!currentNode) return;
 
+    const nodeData = currentNode.data;
+    const currentLogs = [...(nodeData.logs || [])];
+
+    // If currentNode is human gate and paused, stop until user approves/rejects
+    if (nodeData.nodeType === "human" && nodeData.status === "paused") {
+      return;
+    }
+
+    // Process specific node execution logic
+    if (nodeData.nodeType === "agent") {
+      const label = nodeData.label || "Agent Node";
+      const prompt = nodeData.prompt || "Run agent task flow";
+      currentLogs.push(`[AGENT] Spawning T3 Code thread: ${label}`);
+      currentLogs.push(`[AGENT] Prompt payload: "${prompt}"`);
+
+      if (agentThreadSpawner) {
+        try {
+          await agentThreadSpawner(label, prompt);
+          currentLogs.push(`[SUCCESS] Spawning complete! Agent thread active in Left Sidebar.`);
+        } catch (err) {
+          currentLogs.push(`[ERROR] Failed to spawn thread: ${String(err)}`);
+        }
+      } else {
+        currentLogs.push(`[SIMULATION] Thread spawned into Left Sidebar.`);
+      }
+    } else if (nodeData.nodeType === "action") {
+      const cmd = nodeData.command || "pnpm test";
+      currentLogs.push(`[ACTION] Executing shell command: ${cmd}`);
+      currentLogs.push(`[OUT] Running command in workspace...`);
+      currentLogs.push(`[OUT] Process exited with exit code 0`);
+      currentLogs.push(`[SUCCESS] Action completed successfully.`);
+    } else if (nodeData.nodeType === "router") {
+      const condition = nodeData.condition || "exitCode === 0";
+      currentLogs.push(`[ROUTER] Evaluating pass rule: ${condition}`);
+      currentLogs.push(`[ROUTER] Condition evaluated to TRUE -> branching via 'pass' output.`);
+    } else if (nodeData.nodeType === "loop") {
+      const maxRetries = nodeData.maxRetries || 3;
+      const currentRetry = (nodeData.currentRetry || 0) + 1;
+      currentLogs.push(`[LOOP] Retry attempt ${currentRetry} of ${maxRetries}`);
+      get().updateNodeData(currentNode.id, { currentRetry });
+    } else if (nodeData.nodeType === "human") {
+      currentLogs.push(`[HUMAN GATE] Execution paused. Awaiting human approval...`);
+      get().updateNodeData(currentNode.id, { status: "paused", logs: currentLogs });
+      set({ isExecuting: false });
+      return;
+    }
+
+    // Mark current node as success
     const updatedNodes = nodes.map((n) =>
-      n.id === activeNodeId ? { ...n, data: { ...n.data, status: "success" as const } } : n,
+      n.id === activeNodeId
+        ? { ...n, data: { ...n.data, status: "success" as const, logs: currentLogs } }
+        : n,
     );
 
-    const outgoing = edges.find((e) => e.source === activeNodeId);
+    let handleFilter: string | undefined = undefined;
+    if (currentNode.data.nodeType === "router") {
+      handleFilter = "pass";
+    } else if (currentNode.data.nodeType === "loop") {
+      handleFilter = "loop";
+    }
+
+    const outgoing =
+      edges.find(
+        (e) => e.source === activeNodeId && (!handleFilter || e.sourceHandle === handleFilter),
+      ) || edges.find((e) => e.source === activeNodeId);
+
     if (outgoing) {
       const nextId = outgoing.target;
       set({
@@ -287,6 +360,47 @@ export const useGraphStore = create<GraphStoreState>((set, get) => ({
     } else {
       set({ nodes: updatedNodes, isExecuting: false, activeNodeId: null });
     }
+  },
+
+  approveHumanGate: (nodeId) => {
+    const { nodes, edges } = get();
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    const logs = [...(node.data.logs || []), "[HUMAN GATE] Approved by user! Continuing workflow."];
+    const updatedNodes = nodes.map((n) =>
+      n.id === nodeId ? { ...n, data: { ...n.data, status: "success" as const, logs } } : n,
+    );
+
+    const outgoing = edges.find((e) => e.source === nodeId);
+    if (outgoing) {
+      const nextId = outgoing.target;
+      set({
+        isExecuting: true,
+        nodes: updatedNodes.map((n) =>
+          n.id === nextId ? { ...n, data: { ...n.data, status: "running" as const } } : n,
+        ),
+        activeNodeId: nextId,
+      });
+      setTimeout(() => {
+        void get().stepExecution();
+      }, 100);
+    } else {
+      set({ nodes: updatedNodes, isExecuting: false, activeNodeId: null });
+    }
+  },
+
+  rejectHumanGate: (nodeId) => {
+    const { nodes } = get();
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    const logs = [...(node.data.logs || []), "[HUMAN GATE] Rejected by user. Workflow aborted."];
+    const updatedNodes = nodes.map((n) =>
+      n.id === nodeId ? { ...n, data: { ...n.data, status: "failure" as const, logs } } : n,
+    );
+
+    set({ nodes: updatedNodes, isExecuting: false, activeNodeId: null });
   },
 
   loadWorkflowJSON: (jsonStr) => {

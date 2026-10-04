@@ -2,7 +2,15 @@ import { Trash2, X } from "lucide-react";
 import { useGraphStore } from "../../graph/graphStore";
 
 export function NodeInspectorDrawer() {
-  const { nodes, selectedNodeId, updateNodeData, deleteNode, selectNode } = useGraphStore();
+  const {
+    nodes,
+    selectedNodeId,
+    updateNodeData,
+    deleteNode,
+    selectNode,
+    approveHumanGate,
+    rejectHumanGate,
+  } = useGraphStore();
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
@@ -527,6 +535,62 @@ export function NodeInspectorDrawer() {
               }
               className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
+          </div>
+        )}
+        {data.nodeType === "human" && (
+          <div className="space-y-2 border border-cyan-500/30 rounded p-2 bg-cyan-500/5">
+            <label className="block text-cyan-400 text-[10px] uppercase font-mono font-semibold">
+              Human Approval Gate Controls
+            </label>
+            <p className="text-[10px] text-muted-foreground">
+              {data.status === "paused"
+                ? "Workflow is PAUSED awaiting your approval decision."
+                : "When graph execution reaches this node, it pauses until approved."}
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => approveHumanGate(selectedNode.id)}
+                className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded py-1 text-[11px] font-medium transition-colors"
+              >
+                ✓ Approve & Continue
+              </button>
+              <button
+                type="button"
+                onClick={() => rejectHumanGate(selectedNode.id)}
+                className="flex-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded py-1 text-[11px] font-medium transition-colors"
+              >
+                ✕ Reject & Abort
+              </button>
+            </div>
+          </div>
+        )}
+
+        {Array.isArray(data.logs) && data.logs.length > 0 && (
+          <div className="space-y-1.5 border border-border rounded p-2 bg-black/40">
+            <label className="block text-muted-foreground text-[10px] uppercase font-mono">
+              Execution Logs ({data.logs.length})
+            </label>
+            <div className="font-mono text-[10px] text-slate-300 space-y-1 max-h-36 overflow-y-auto pr-1">
+              {data.logs.map((log, idx) => (
+                <div
+                  key={idx}
+                  className={`leading-tight border-b border-border/20 pb-0.5 ${
+                    log.includes("[ERROR]")
+                      ? "text-rose-400"
+                      : log.includes("[SUCCESS]")
+                        ? "text-emerald-400"
+                        : log.includes("[AGENT]")
+                          ? "text-blue-400"
+                          : log.includes("[ACTION]")
+                            ? "text-amber-300"
+                            : "text-slate-300"
+                  }`}
+                >
+                  {log}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -9982,6 +9982,54 @@ export default function ChatView(props: ChatViewProps) {
     composerRef,
   ]);
 
+  const handleSpawnAgentNodeThread = useCallback(
+    async (nodeLabel: string, promptText: string) => {
+      if (!activeThreadRef || !activeProject) return;
+      const targetEnvironmentId = activeThreadRef.environmentId;
+      const nextThreadId = newThreadId();
+      const title = `🤖 [Graph] ${truncate(nodeLabel, { length: 40 })}`;
+
+      const createResult = await createThread({
+        environmentId: targetEnvironmentId,
+        input: {
+          threadId: nextThreadId,
+          projectId: activeProject.id,
+          title,
+          modelSelection: ctxSelectedModelSelection,
+          runtimeMode: defaultRuntimeMode,
+          interactionMode: "default",
+          branch: activeThreadBranch,
+          worktreePath: activeThread?.worktreePath ?? "",
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      if (createResult._tag !== "Failure") {
+        await startThreadTurn({
+          environmentId: targetEnvironmentId,
+          input: {
+            threadId: nextThreadId,
+            message: {
+              messageId: newMessageId(),
+              role: "user",
+              text: promptText,
+            },
+          },
+        });
+      }
+    },
+    [
+      activeThreadRef,
+      activeProject,
+      createThread,
+      startThreadTurn,
+      ctxSelectedModelSelection,
+      defaultRuntimeMode,
+      activeThreadBranch,
+      activeThread,
+    ],
+  );
+
   const getModelDisabledReason = useCallback(
     (instanceId: ProviderInstanceId, model: string): string | null => {
       if (!activeThread) {
@@ -11226,6 +11274,7 @@ export default function ChatView(props: ChatViewProps) {
           onAddPullRequests={addPullRequestsSurface}
           onAddDevice={addDeviceSurface}
           onAddGraph={addGraphSurface}
+          onSpawnAgentThread={handleSpawnAgentNodeThread}
           browserAvailable={isPreviewSupportedInRuntime()}
           terminalAvailable={activeProject !== null}
           diffAvailable={isServerThread && isGitRepo}
@@ -11283,6 +11332,7 @@ export default function ChatView(props: ChatViewProps) {
             onAddPullRequests={addPullRequestsSurface}
             onAddDevice={addDeviceSurface}
             onAddGraph={addGraphSurface}
+            onSpawnAgentThread={handleSpawnAgentNodeThread}
             browserAvailable={isPreviewSupportedInRuntime()}
             terminalAvailable={activeProject !== null}
             diffAvailable={isServerThread && isGitRepo}
