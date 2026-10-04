@@ -24,6 +24,31 @@ export interface GraphNodeData extends Record<string, unknown> {
   selectedSpecFile?: string;
   updateInFileStatus?: boolean;
   moveFileOnCompletion?: boolean;
+
+  // GitHub Issue Source properties
+  githubRepo?: string;
+  githubRequiredLabel?: string;
+  githubAuthorPermission?: "collaborators" | "allowlist" | "any";
+  githubAllowedAuthors?: string;
+  githubIssueNumber?: string;
+  githubActionOnComplete?: "comment_and_close" | "create_pr" | "update_label";
+  githubInProgressLabel?: string;
+  githubDoneLabel?: string;
+
+  // Linear Ticket Source properties
+  linearTeam?: string;
+  linearQueueStatus?: string;
+  linearInProgressStatus?: string;
+  linearDoneStatus?: string;
+  linearIssueId?: string;
+  linearAutoAssign?: boolean;
+
+  // CI / Error Log Source properties
+  ciErrorSource?: "terminal_logs" | "github_actions" | "custom_log_file";
+  ciLogFilePath?: string;
+  ciWorkflowName?: string;
+  ciAutoCreateIssue?: boolean;
+
   engine?: "claude-code" | "opencode" | "codex" | "antigravity" | "t3-acp";
   command?: string;
   maxRetries?: number;

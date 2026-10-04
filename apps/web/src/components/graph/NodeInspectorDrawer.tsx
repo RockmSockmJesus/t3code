@@ -97,21 +97,32 @@ export function NodeInspectorDrawer() {
                     specFailedPath: data.specFailedPath || ".t3/specs/failed",
                     updateInFileStatus: data.updateInFileStatus ?? true,
                     moveFileOnCompletion: data.moveFileOnCompletion ?? true,
+                    githubRepo: data.githubRepo || "auto",
+                    githubRequiredLabel: data.githubRequiredLabel || "agent-queue",
+                    githubAuthorPermission: data.githubAuthorPermission || "collaborators",
+                    githubIssueNumber: data.githubIssueNumber || "auto",
+                    githubActionOnComplete: data.githubActionOnComplete || "create_pr",
+                    githubInProgressLabel: data.githubInProgressLabel || "in-progress",
+                    githubDoneLabel: data.githubDoneLabel || "fixed-by-agent",
+                    linearTeam: data.linearTeam || "ENG",
+                    linearQueueStatus: data.linearQueueStatus || "Ready for AI",
+                    linearInProgressStatus: data.linearInProgressStatus || "In Progress",
+                    linearDoneStatus: data.linearDoneStatus || "Done",
+                    linearIssueId: data.linearIssueId || "auto",
+                    linearAutoAssign: data.linearAutoAssign ?? true,
+                    ciErrorSource: data.ciErrorSource || "terminal_logs",
+                    ciLogFilePath: data.ciLogFilePath || ".t3/logs/error.log",
+                    ciWorkflowName: data.ciWorkflowName || "CI / Build Checks",
+                    ciAutoCreateIssue: data.ciAutoCreateIssue ?? true,
                   })
                 }
                 className="w-full bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="manual">📝 Freeform Prompt</option>
                 <option value="workspace_spec">📄 Workspace Spec Folder</option>
-                <option value="github_issue" disabled>
-                  🐙 GitHub Issue (Coming next)
-                </option>
-                <option value="linear_issue" disabled>
-                  📐 Linear Ticket (Coming next)
-                </option>
-                <option value="ci_error" disabled>
-                  🚨 CI / Sentry Log (Coming next)
-                </option>
+                <option value="github_issue">🐙 GitHub Issue Queue</option>
+                <option value="linear_issue">📐 Linear Ticket Queue</option>
+                <option value="ci_error">🚨 CI / Error Log Watcher</option>
               </select>
             </div>
 
@@ -211,6 +222,261 @@ export function NodeInspectorDrawer() {
                       className="rounded border-border bg-background text-primary focus:ring-primary"
                     />
                     <span>Update status & checklist in .md file</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {data.inputSourceType === "github_issue" && (
+              <div className="space-y-2.5 border border-border/80 rounded p-2 bg-muted/20">
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    GitHub Repository
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="owner/repo or auto"
+                    value={data.githubRepo || "auto"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { githubRepo: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Trigger Label Filter
+                  </label>
+                  <input
+                    type="text"
+                    value={data.githubRequiredLabel || "agent-queue"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { githubRequiredLabel: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Security Author Filter
+                  </label>
+                  <select
+                    value={data.githubAuthorPermission || "collaborators"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, {
+                        githubAuthorPermission: e.target.value as any,
+                      })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 text-foreground text-[11px] focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="collaborators">🔒 Maintainers & Collaborators only</option>
+                    <option value="allowlist">📋 Custom User Allowlist</option>
+                    <option value="any">⚠️ Any Author (Public Queue)</option>
+                  </select>
+                </div>
+
+                {data.githubAuthorPermission === "allowlist" && (
+                  <div>
+                    <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                      Allowed Authors (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="octocat, graham, dev1"
+                      value={data.githubAllowedAuthors || ""}
+                      onChange={(e) =>
+                        updateNodeData(selectedNode.id, { githubAllowedAuthors: e.target.value })
+                      }
+                      className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Target Issue Selection
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="auto (next in queue) or #123"
+                    value={data.githubIssueNumber || "auto"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { githubIssueNumber: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    On Execution Completion
+                  </label>
+                  <select
+                    value={data.githubActionOnComplete || "create_pr"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, {
+                        githubActionOnComplete: e.target.value as any,
+                      })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 text-foreground text-[11px] focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="create_pr">🔀 Create Pull Request & Link Issue</option>
+                    <option value="comment_and_close">💬 Post Summary Comment & Close</option>
+                    <option value="update_label">🏷️ Update Issue Labels Only</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {data.inputSourceType === "linear_issue" && (
+              <div className="space-y-2.5 border border-border/80 rounded p-2 bg-muted/20">
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Linear Team Key
+                  </label>
+                  <input
+                    type="text"
+                    value={data.linearTeam || "ENG"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { linearTeam: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Trigger Queue Status (Inbox)
+                  </label>
+                  <input
+                    type="text"
+                    value={data.linearQueueStatus || "Ready for AI"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { linearQueueStatus: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    In Progress Status
+                  </label>
+                  <input
+                    type="text"
+                    value={data.linearInProgressStatus || "In Progress"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { linearInProgressStatus: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Completion Status
+                  </label>
+                  <input
+                    type="text"
+                    value={data.linearDoneStatus || "Done"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { linearDoneStatus: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Ticket ID Target
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="auto (next in status) or ENG-101"
+                    value={data.linearIssueId || "auto"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { linearIssueId: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="pt-1 border-t border-border/40">
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={data.linearAutoAssign ?? true}
+                      onChange={(e) =>
+                        updateNodeData(selectedNode.id, { linearAutoAssign: e.target.checked })
+                      }
+                      className="rounded border-border bg-background text-primary focus:ring-primary"
+                    />
+                    <span>Auto-assign ticket to AI Agent on execution</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {data.inputSourceType === "ci_error" && (
+              <div className="space-y-2.5 border border-border/80 rounded p-2 bg-muted/20">
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    CI / Error Log Source
+                  </label>
+                  <select
+                    value={data.ciErrorSource || "terminal_logs"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { ciErrorSource: e.target.value as any })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 text-foreground text-[11px] focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="terminal_logs">💻 Local Terminal / Dev Server Errors</option>
+                    <option value="github_actions">⚙️ GitHub Actions Workflow Failures</option>
+                    <option value="custom_log_file">📄 Custom Log File Watcher</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Log File Path / Target
+                  </label>
+                  <input
+                    type="text"
+                    value={data.ciLogFilePath || ".t3/logs/error.log"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { ciLogFilePath: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Workflow / Service Name
+                  </label>
+                  <input
+                    type="text"
+                    value={data.ciWorkflowName || "CI / Build Checks"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { ciWorkflowName: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="pt-1 border-t border-border/40">
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={data.ciAutoCreateIssue ?? true}
+                      onChange={(e) =>
+                        updateNodeData(selectedNode.id, { ciAutoCreateIssue: e.target.checked })
+                      }
+                      className="rounded border-border bg-background text-primary focus:ring-primary"
+                    />
+                    <span>Auto-create Issue report on CI failure</span>
                   </label>
                 </div>
               </div>
