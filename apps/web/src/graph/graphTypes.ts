@@ -1,21 +1,15 @@
 import type { Edge, Node } from "@xyflow/react";
 
-export type GraphNodeType =
-  | "input"
-  | "agent"
-  | "action"
-  | "router"
-  | "loop"
-  | "human"
-  | "git";
+export type GraphNodeType = "input" | "agent" | "action" | "router" | "loop" | "human" | "git";
 
-export type NodeExecutionStatus =
-  | "idle"
-  | "queued"
-  | "running"
-  | "success"
-  | "failure"
-  | "paused";
+export type NodeExecutionStatus = "idle" | "queued" | "running" | "success" | "failure" | "paused";
+
+export type InputSourceType =
+  | "manual"
+  | "workspace_spec"
+  | "github_issue"
+  | "linear_issue"
+  | "ci_error";
 
 export interface GraphNodeData extends Record<string, unknown> {
   label: string;
@@ -23,6 +17,13 @@ export interface GraphNodeData extends Record<string, unknown> {
   nodeType: GraphNodeType;
   status: NodeExecutionStatus;
   prompt?: string;
+  inputSourceType?: InputSourceType;
+  specInboxPath?: string;
+  specDonePath?: string;
+  specFailedPath?: string;
+  selectedSpecFile?: string;
+  updateInFileStatus?: boolean;
+  moveFileOnCompletion?: boolean;
   engine?: "claude-code" | "opencode" | "codex" | "antigravity" | "t3-acp";
   command?: string;
   maxRetries?: number;

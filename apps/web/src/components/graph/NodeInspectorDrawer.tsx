@@ -82,16 +82,139 @@ export function NodeInspectorDrawer() {
         )}
 
         {data.nodeType === "input" && (
-          <div>
-            <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
-              Spec / Task Brief
-            </label>
-            <textarea
-              rows={5}
-              value={data.prompt || ""}
-              onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
-              className="w-full bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-            />
+          <div className="space-y-3">
+            <div>
+              <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                Input Source Type
+              </label>
+              <select
+                value={data.inputSourceType || "manual"}
+                onChange={(e) =>
+                  updateNodeData(selectedNode.id, {
+                    inputSourceType: e.target.value as any,
+                    specInboxPath: data.specInboxPath || ".t3/specs/inbox",
+                    specDonePath: data.specDonePath || ".t3/specs/done",
+                    specFailedPath: data.specFailedPath || ".t3/specs/failed",
+                    updateInFileStatus: data.updateInFileStatus ?? true,
+                    moveFileOnCompletion: data.moveFileOnCompletion ?? true,
+                  })
+                }
+                className="w-full bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="manual">📝 Freeform Prompt</option>
+                <option value="workspace_spec">📄 Workspace Spec Folder</option>
+                <option value="github_issue" disabled>
+                  🐙 GitHub Issue (Coming next)
+                </option>
+                <option value="linear_issue" disabled>
+                  📐 Linear Ticket (Coming next)
+                </option>
+                <option value="ci_error" disabled>
+                  🚨 CI / Sentry Log (Coming next)
+                </option>
+              </select>
+            </div>
+
+            {(data.inputSourceType === "manual" || !data.inputSourceType) && (
+              <div>
+                <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                  Spec / Task Brief
+                </label>
+                <textarea
+                  rows={5}
+                  value={data.prompt || ""}
+                  onChange={(e) => updateNodeData(selectedNode.id, { prompt: e.target.value })}
+                  className="w-full bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                />
+              </div>
+            )}
+
+            {data.inputSourceType === "workspace_spec" && (
+              <div className="space-y-2.5 border border-border/80 rounded p-2 bg-muted/20">
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Inbox Folder (To-Do)
+                  </label>
+                  <input
+                    type="text"
+                    value={data.specInboxPath || ".t3/specs/inbox"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { specInboxPath: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Done Folder (Success)
+                  </label>
+                  <input
+                    type="text"
+                    value={data.specDonePath || ".t3/specs/done"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { specDonePath: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Failed Folder (Error)
+                  </label>
+                  <input
+                    type="text"
+                    value={data.specFailedPath || ".t3/specs/failed"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { specFailedPath: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[10px] uppercase font-mono mb-1">
+                    Spec File Target
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="auto (first file) or filename.md"
+                    value={data.selectedSpecFile || "auto"}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, { selectedSpecFile: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="pt-1 space-y-1.5 border-t border-border/40">
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={data.moveFileOnCompletion ?? true}
+                      onChange={(e) =>
+                        updateNodeData(selectedNode.id, { moveFileOnCompletion: e.target.checked })
+                      }
+                      className="rounded border-border bg-background text-primary focus:ring-primary"
+                    />
+                    <span>Move file to Done/Failed folder</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={data.updateInFileStatus ?? true}
+                      onChange={(e) =>
+                        updateNodeData(selectedNode.id, { updateInFileStatus: e.target.checked })
+                      }
+                      className="rounded border-border bg-background text-primary focus:ring-primary"
+                    />
+                    <span>Update status & checklist in .md file</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -133,7 +256,9 @@ export function NodeInspectorDrawer() {
               min={1}
               max={10}
               value={data.maxRetries || 3}
-              onChange={(e) => updateNodeData(selectedNode.id, { maxRetries: parseInt(e.target.value) || 1 })}
+              onChange={(e) =>
+                updateNodeData(selectedNode.id, { maxRetries: parseInt(e.target.value) || 1 })
+              }
               className="w-full bg-background border border-border rounded px-2 py-1 font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
